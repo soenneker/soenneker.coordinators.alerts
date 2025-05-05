@@ -45,6 +45,6 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.4" />
         <PackageReference Include="Soenneker.Coordinators.Base" Version="3.0.903" />
         <PackageReference Include="Soenneker.MsTeams.Util" Version="3.0.147" />
-        <PackageReference Include="Soenneker.Requests.Azure.Alerts" Version="3.0.20" />
+        <PackageReference Include="Soenneker.Requests.Azure.Alerts" Version="3.0.21" />
     </ItemGroup>
 </Project>
