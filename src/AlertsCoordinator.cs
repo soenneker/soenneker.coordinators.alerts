@@ -19,7 +19,7 @@ using Soenneker.Utils.TimeZones;
 namespace Soenneker.Coordinators.Alerts;
 
 ///<inheritdoc cref="IAlertsCoordinator"/>
-public class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
+public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
 {
     private readonly IMsTeamsUtil _msTeamsUtil;
 
