@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using Soenneker.Coordinators.Alerts.Abstract;
 using Soenneker.Coordinators.Base;
 using Soenneker.Extensions.Configuration;
-using Soenneker.Extensions.DateTimeOffsets; // <-- new (or wherever your DTO extensions live)
+using Soenneker.Extensions.DateTimeOffsets;
 using Soenneker.Extensions.String;
 using Soenneker.MsTeams.Util.Abstract;
 using Soenneker.Requests.Azure.Alerts;
@@ -42,7 +42,7 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
         string? json = JsonUtil.Serialize(request);
         Logger.LogDebug("Error json: {json}", json);
 
-        AdaptiveCard card = new(new AdaptiveSchemaVersion(1, 2));
+        AdaptiveCards.AdaptiveCard card = new(new AdaptiveSchemaVersion(1, 2));
 
         var container = new AdaptiveContainer();
 
