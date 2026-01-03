@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using Soenneker.Coordinators.Alerts.Abstract;
 using Soenneker.Coordinators.Base;
 using Soenneker.Extensions.Configuration;
-using Soenneker.Extensions.DateTime;
+using Soenneker.Extensions.DateTimeOffsets; // <-- new (or wherever your DTO extensions live)
 using Soenneker.Extensions.String;
 using Soenneker.MsTeams.Util.Abstract;
 using Soenneker.Requests.Azure.Alerts;
@@ -42,7 +42,7 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
         string? json = JsonUtil.Serialize(request);
         Logger.LogDebug("Error json: {json}", json);
 
-        AdaptiveCards.AdaptiveCard card = new(new AdaptiveSchemaVersion(1, 2));
+        AdaptiveCard card = new(new AdaptiveSchemaVersion(1, 2));
 
         var container = new AdaptiveContainer();
 
@@ -89,16 +89,14 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
 
         if (values.Any())
         {
-            var factSet = new AdaptiveFactSet {Facts = []};
+            var factSet = new AdaptiveFactSet { Facts = [] };
 
             foreach ((string key, string? value) in values)
             {
                 if (value.IsNullOrEmpty())
                     continue;
 
-                var fact = new AdaptiveFact(key, value);
-
-                factSet.Facts.Add(fact);
+                factSet.Facts.Add(new AdaptiveFact(key, value));
             }
 
             container.Items.Add(factSet);
@@ -115,7 +113,8 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
         // ReSharper disable once ConditionIsAlwaysTrueOrFalse
         if (request.Data.Essentials.FiredDateTime != null)
         {
-            DateTime? parsed = request.Data.Essentials.FiredDateTime.ToUtcDateTime();
+            // Parse as DateTimeOffset (expects ISO-8601 w/ Z or offset)
+            DateTimeOffset? parsed = request.Data.Essentials.FiredDateTime.ToDateTimeOffset();
 
             if (parsed != null)
             {
@@ -129,13 +128,11 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
             }
         }
 
-        var action = new AdaptiveOpenUrlAction
+        card.Actions.Add(new AdaptiveOpenUrlAction
         {
             Title = "View",
             UrlString = "https://portal.azure.com/#blade/Microsoft_Azure_Monitoring/AlertsManagementSummaryBlade"
-        };
-
-        card.Actions.Add(action);
+        });
 
         card.Body.Add(container);
 
