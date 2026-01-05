@@ -11,6 +11,7 @@ using Soenneker.Coordinators.Base;
 using Soenneker.Extensions.Configuration;
 using Soenneker.Extensions.DateTimeOffsets;
 using Soenneker.Extensions.String;
+using Soenneker.Extensions.ValueTask;
 using Soenneker.MsTeams.Util.Abstract;
 using Soenneker.Requests.Azure.Alerts;
 using Soenneker.Utils.Json;
@@ -136,7 +137,7 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
 
         card.Body.Add(container);
 
-        await _msTeamsUtil.SendMessageCard(card, "Errors", cancellationToken: cancellationToken);
+        await _msTeamsUtil.SendMessageCard(card, "Errors", cancellationToken: cancellationToken).NoSync();
 
         return true;
     }
