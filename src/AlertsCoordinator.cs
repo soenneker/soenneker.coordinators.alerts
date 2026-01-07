@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AdaptiveCards;
@@ -22,101 +20,121 @@ namespace Soenneker.Coordinators.Alerts;
 ///<inheritdoc cref="IAlertsCoordinator"/>
 public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
 {
+    private static readonly AdaptiveSchemaVersion _schema12 = new(1, 2);
+    private const string _azureAlertsUrl = "https://portal.azure.com/#blade/Microsoft_Azure_Monitoring/AlertsManagementSummaryBlade";
+
     private readonly IMsTeamsUtil _msTeamsUtil;
+
+    // Cache config reads (no per-call configuration access)
+    private readonly string _azureApiKey;
+    private readonly string _environment;
 
     public AlertsCoordinator(IConfiguration configuration, ILogger<AlertsCoordinator> logger, IMsTeamsUtil msTeamsUtil) : base(configuration, logger)
     {
         _msTeamsUtil = msTeamsUtil;
+
+        _azureApiKey = Config.GetValueStrict<string>("Api:Alerts:AzureApiKey");
+        _environment = Config.GetValueStrict<string>("Environment");
     }
 
     public async ValueTask<bool?> CreateAzure(string apiKey, CasRequest request, CancellationToken cancellationToken)
     {
-        if (Config.GetValueStrict<string>("Api:Alerts:AzureApiKey") != apiKey)
+        if (!string.Equals(_azureApiKey, apiKey, StringComparison.Ordinal))
             throw new Exception($"{nameof(apiKey)} does not validate");
 
-        if (request.Data?.Essentials == null)
+        CasData? data = request.Data;
+        CasEssentials? essentials = data?.Essentials;
+
+        if (essentials == null)
         {
             Logger.LogError("Error did not have Essentials");
             return false;
         }
 
-        string? json = JsonUtil.Serialize(request);
-        Logger.LogDebug("Error json: {json}", json);
+        if (Logger.IsEnabled(LogLevel.Debug))
+        {
+            string? json = JsonUtil.Serialize(request);
+            Logger.LogDebug("Error json: {json}", json);
+        }
 
-        AdaptiveCards.AdaptiveCard card = new(new AdaptiveSchemaVersion(1, 2));
-
+        var card = new AdaptiveCards.AdaptiveCard(_schema12);
         var container = new AdaptiveContainer();
+
+        string? monitorCondition = essentials.MonitorCondition;
 
         var titleBlock = new AdaptiveTextBlock
         {
-            Text = request.Data.Essentials.MonitorCondition,
+            Text = monitorCondition,
             Size = AdaptiveTextSize.Medium,
             Weight = AdaptiveTextWeight.Bolder,
             Wrap = true
         };
 
-        switch (request.Data.Essentials.MonitorCondition!.ToLowerInvariantFast())
+        // Avoid lowercasing/allocations; do case-insensitive comparisons
+        if (monitorCondition != null)
         {
-            case "resolved":
+            if (string.Equals(monitorCondition, "resolved", StringComparison.OrdinalIgnoreCase))
                 titleBlock.Color = AdaptiveTextColor.Good;
-                break;
-            case "fired":
+            else if (string.Equals(monitorCondition, "fired", StringComparison.OrdinalIgnoreCase))
                 titleBlock.Color = AdaptiveTextColor.Attention;
-                break;
         }
 
         container.Items.Add(titleBlock);
 
         container.Items.Add(new AdaptiveTextBlock
         {
-            Text = $"Alert for rule {request.Data.Essentials.AlertRule}",
+            Text = $"Alert for rule {essentials.AlertRule}",
             Size = AdaptiveTextSize.Medium,
             Wrap = true
         });
 
-        var values = new Dictionary<string, string?>();
+        // Build facts without Dictionary/LINQ
+        AdaptiveFactSet? factSet = null;
 
-        CasCondition? condition = request.Data.AlertContext?.Condition;
+        CasCondition? condition = data!.AlertContext?.Condition;
+        var allOf = condition?.AllOf;
 
-        if (condition?.AllOf != null && condition.AllOf.Count != 0)
+        if (allOf != null && allOf.Count != 0)
         {
-            CasAllOf firstCondition = condition.AllOf.First();
+            CasAllOf firstCondition = allOf[0];
 
-            values.Add("Name:", firstCondition.MetricName);
-            values.Add("Value:", firstCondition.MetricValue.ToString());
-        }
-
-        values.Add("Severity:", request.Data.Essentials.Severity);
-
-        if (values.Any())
-        {
-            var factSet = new AdaptiveFactSet { Facts = [] };
-
-            foreach ((string key, string? value) in values)
+            if (!firstCondition.MetricName.IsNullOrEmpty())
             {
-                if (value.IsNullOrEmpty())
-                    continue;
-
-                factSet.Facts.Add(new AdaptiveFact(key, value));
+                factSet ??= new AdaptiveFactSet { Facts = [] };
+                factSet.Facts.Add(new AdaptiveFact("Name:", firstCondition.MetricName));
             }
 
-            container.Items.Add(factSet);
+            // Avoid adding empty/meaningless values
+            string metricValue = firstCondition.MetricValue.ToString();
+            if (!metricValue.IsNullOrEmpty())
+            {
+                factSet ??= new AdaptiveFactSet { Facts = [] };
+                factSet.Facts.Add(new AdaptiveFact("Value:", metricValue));
+            }
         }
+
+        string? severity = essentials.Severity;
+        if (!severity.IsNullOrEmpty())
+        {
+            factSet ??= new AdaptiveFactSet { Facts = [] };
+            factSet.Facts.Add(new AdaptiveFact("Severity:", severity));
+        }
+
+        if (factSet != null && factSet.Facts.Count != 0)
+            container.Items.Add(factSet);
 
         container.Items.Add(new AdaptiveTextBlock
         {
-            Text = Config.GetValueStrict<string>("Environment"),
+            Text = _environment,
             Size = AdaptiveTextSize.Small,
             IsSubtle = true,
             Spacing = AdaptiveSpacing.Small
         });
 
-        // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-        if (request.Data.Essentials.FiredDateTime != null)
+        string? firedDateTime = essentials.FiredDateTime;
+        if (!firedDateTime.IsNullOrEmpty())
         {
-            // Parse as DateTimeOffset (expects ISO-8601 w/ Z or offset)
-            DateTimeOffset? parsed = request.Data.Essentials.FiredDateTime.ToDateTimeOffset();
-
+            DateTimeOffset? parsed = firedDateTime.ToDateTimeOffset();
             if (parsed != null)
             {
                 container.Items.Add(new AdaptiveTextBlock
@@ -132,13 +150,13 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
         card.Actions.Add(new AdaptiveOpenUrlAction
         {
             Title = "View",
-            UrlString = "https://portal.azure.com/#blade/Microsoft_Azure_Monitoring/AlertsManagementSummaryBlade"
+            UrlString = _azureAlertsUrl
         });
 
         card.Body.Add(container);
 
-        await _msTeamsUtil.SendMessageCard(card, "Errors", cancellationToken: cancellationToken).NoSync();
-
+        await _msTeamsUtil.SendMessageCard(card, "Errors", cancellationToken: cancellationToken)
+                          .NoSync();
         return true;
     }
 }
