@@ -43,7 +43,7 @@
     <ItemGroup>
         <PackageReference Include="Soenneker.Coordinators.Base" Version="4.0.994" />
         <PackageReference Include="Soenneker.Extensions.DateTimeOffsets" Version="4.0.10" />
-        <PackageReference Include="Soenneker.MsTeams.Util" Version="4.0.587" />
+        <PackageReference Include="Soenneker.MsTeams.Util" Version="4.0.588" />
         <PackageReference Include="Soenneker.Requests.Azure.Alerts" Version="4.0.33" />
     </ItemGroup>
 </Project>
