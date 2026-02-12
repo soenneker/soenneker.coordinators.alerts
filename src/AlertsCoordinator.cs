@@ -73,9 +73,9 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
         // Avoid lowercasing/allocations; do case-insensitive comparisons
         if (monitorCondition != null)
         {
-            if (string.Equals(monitorCondition, "resolved", StringComparison.OrdinalIgnoreCase))
+            if (monitorCondition.EqualsIgnoreCase("resolved"))
                 titleBlock.Color = AdaptiveTextColor.Good;
-            else if (string.Equals(monitorCondition, "fired", StringComparison.OrdinalIgnoreCase))
+            else if (monitorCondition.EqualsIgnoreCase("fired"))
                 titleBlock.Color = AdaptiveTextColor.Attention;
         }
 
