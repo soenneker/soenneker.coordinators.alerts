@@ -28,7 +28,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\Soenneker.Coordinators.Alerts.csproj" />
+        <ProjectReference Include="..\..\src\Soenneker.Coordinators.Alerts\Soenneker.Coordinators.Alerts.csproj" />
     </ItemGroup>
 
     <ItemGroup>
