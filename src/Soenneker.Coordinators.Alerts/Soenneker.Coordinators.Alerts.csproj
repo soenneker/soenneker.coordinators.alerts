@@ -45,7 +45,7 @@
 
     <ItemGroup>
         <PackageReference Include="Soenneker.Coordinators.Base" Version="4.0.1060" />
-        <PackageReference Include="Soenneker.MsTeams.Util" Version="4.0.902" />
+        <PackageReference Include="Soenneker.MsTeams.Util" Version="4.0.904" />
         <PackageReference Include="Soenneker.Requests.Azure.Alerts" Version="4.0.43" />
     </ItemGroup>
 </Project>
