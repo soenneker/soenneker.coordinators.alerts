@@ -10,5 +10,12 @@ namespace Soenneker.Coordinators.Alerts.Abstract;
 /// </summary>
 public interface IAlertsCoordinator : IBaseCoordinator
 {
+    /// <summary>
+    /// Creates azure.
+    /// </summary>
+    /// <param name="apiKey">The API key.</param>
+    /// <param name="request">The request.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task containing the result of the operation.</returns>
     ValueTask<bool?> CreateAzure(string apiKey, CasRequest request, CancellationToken cancellationToken);
 }
