@@ -17,7 +17,7 @@ using Soenneker.Utils.TimeZones;
 
 namespace Soenneker.Coordinators.Alerts;
 
-///<inheritdoc cref="IAlertsCoordinator"/>
+/// <inheritdoc cref="IAlertsCoordinator"/>
 public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
 {
     private static readonly AdaptiveSchemaVersion _schema12 = new(1, 2);
