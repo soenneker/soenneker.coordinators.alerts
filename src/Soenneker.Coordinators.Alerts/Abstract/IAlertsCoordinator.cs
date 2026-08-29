@@ -13,9 +13,9 @@ public interface IAlertsCoordinator : IBaseCoordinator
     /// <summary>
     /// Creates azure.
     /// </summary>
-    /// <param name="apiKey">The API key.</param>
-    /// <param name="request">The request.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A task containing the result of the operation.</returns>
+    /// <param name="apiKey">API key used to authenticate the request.</param>
+    /// <param name="request">request that defines the request to send.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>true if creates azure; otherwise, false.</returns>
     ValueTask<bool?> CreateAzure(string apiKey, CasRequest request, CancellationToken cancellationToken);
 }
