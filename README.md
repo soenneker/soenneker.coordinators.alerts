@@ -5,7 +5,7 @@
 
 # Soenneker.Coordinators.Alerts
 
-Handling Azure alerts from the controller.
+Validates Azure Monitor common alert schema callbacks, builds an Adaptive Card, and sends it to the Microsoft Teams `Errors` channel.
 
 ## Install
 
@@ -13,26 +13,63 @@ Handling Azure alerts from the controller.
 dotnet add package Soenneker.Coordinators.Alerts
 ```
 
-## Quick start
+## Configuration
+
+```json
+{
+  "Api": {
+    "Alerts": {
+      "AzureApiKey": "replace-with-a-random-secret"
+    }
+  },
+  "Environment": "Production",
+  "MsTeams": {
+    "UseQueue": false,
+    "Enabled": true,
+    "Errors": {
+      "Enabled": true,
+      "WebhookUrl": "https://..."
+    }
+  }
+}
+```
+
+When `MsTeams:UseQueue` is `true`, Microsoft Teams delivery is placed on the configured service bus instead of sent to `MsTeams:Errors:WebhookUrl` immediately.
+
+## Registration
 
 ```csharp
 using Soenneker.Coordinators.Alerts.Registrars;
 using Microsoft.Extensions.DependencyInjection;
 
 var services = new ServiceCollection();
-var result = services.AddAlertsCoordinatorAsSingleton();
+services.AddAlertsCoordinatorAsSingleton();
 ```
 
-Adds `IAlertsCoordinator` as a singleton service.
+Use `AddAlertsCoordinatorAsScoped()` when the coordinator and its Microsoft Teams dependencies should follow a dependency-injection scope.
 
-## What you get
+## Usage
 
-- `IAlertsCoordinator` — Handling Azure alerts from the controller.
-- `AlertsCoordinatorRegistrar` — Handling Azure alerts from the controller.
+```csharp
+using Soenneker.Coordinators.Alerts.Abstract;
+using Soenneker.Requests.Azure.Alerts;
 
-## API at a glance
+public sealed class AzureAlertHandler(IAlertsCoordinator alerts)
+{
+    public ValueTask<bool?> Handle(string apiKey, CasRequest request, CancellationToken cancellationToken)
+    {
+        return alerts.CreateAzure(apiKey, request, cancellationToken);
+    }
+}
+```
 
-| API | What it does | Result / important behavior |
-| --- | --- | --- |
-| `AlertsCoordinatorRegistrar.AddAlertsCoordinatorAsSingleton(services)` | Adds `IAlertsCoordinator` as a singleton service. | The same service collection, so additional registrations can be chained. |
-| `AlertsCoordinatorRegistrar.AddAlertsCoordinatorAsScoped(services)` | Adds `IAlertsCoordinator` as a scoped service. | The same service collection, so additional registrations can be chained. |
+`CreateAzure` compares the supplied key with `Api:Alerts:AzureApiKey`, then reads `Data.Essentials` from the common alert schema request. A valid alert is formatted with its monitor condition, rule, first metric condition, severity, configured environment, and fired time converted to US Eastern time.
+
+The result is `true` after the Teams utility accepts the card and `false` when alert essentials are missing. An invalid API key throws `UnauthorizedAccessException`. Downstream Teams or service-bus failures propagate to the caller.
+
+## Security and operation
+
+- API keys are compared through fixed-size hashes using a fixed-time comparison. Store the configured key in a secret provider rather than source-controlled JSON.
+- Incoming alert payloads are not serialized into logs by this coordinator. Alert fields may still appear in the Teams card and should be treated according to their data sensitivity.
+- The card links to Azure's Alerts Management page rather than a resource-specific alert URL.
+- With queued delivery, successful completion means the message was accepted by the queue, not delivered to Teams.

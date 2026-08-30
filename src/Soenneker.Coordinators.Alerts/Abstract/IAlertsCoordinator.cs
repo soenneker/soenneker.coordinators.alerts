@@ -6,16 +6,17 @@ using System.Threading.Tasks;
 namespace Soenneker.Coordinators.Alerts.Abstract;
 
 /// <summary>
-/// Handling Azure alerts from the controller
+/// Validates and forwards Azure Monitor common alert schema payloads to Microsoft Teams.
 /// </summary>
 public interface IAlertsCoordinator : IBaseCoordinator
 {
     /// <summary>
-    /// Creates azure.
+    /// Validates an Azure alert callback and forwards a formatted Adaptive Card to the Errors channel.
     /// </summary>
     /// <param name="apiKey">API key used to authenticate the request.</param>
     /// <param name="request">request that defines the request to send.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
-    /// <returns>true if creates azure; otherwise, false.</returns>
+    /// <returns><c>true</c> when the alert is accepted; <c>false</c> when required alert essentials are missing.</returns>
+    /// <exception cref="System.UnauthorizedAccessException">The supplied API key does not match the configured key.</exception>
     ValueTask<bool?> CreateAzure(string apiKey, CasRequest request, CancellationToken cancellationToken);
 }

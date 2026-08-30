@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AdaptiveCards;
@@ -12,7 +14,6 @@ using Soenneker.Extensions.String;
 using Soenneker.Extensions.ValueTask;
 using Soenneker.MsTeams.Util.Abstract;
 using Soenneker.Requests.Azure.Alerts;
-using Soenneker.Utils.Json;
 using Soenneker.Utils.TimeZones;
 
 namespace Soenneker.Coordinators.Alerts;
@@ -26,21 +27,23 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
     private readonly IMsTeamsUtil _msTeamsUtil;
 
     // Cache config reads (no per-call configuration access)
-    private readonly string _azureApiKey;
+    private readonly byte[] _azureApiKeyHash;
     private readonly string _environment;
 
     public AlertsCoordinator(IConfiguration configuration, ILogger<AlertsCoordinator> logger, IMsTeamsUtil msTeamsUtil) : base(configuration, logger)
     {
         _msTeamsUtil = msTeamsUtil;
 
-        _azureApiKey = Config.GetValueStrict<string>("Api:Alerts:AzureApiKey");
+        string azureApiKey = Config.GetValueStrict<string>("Api:Alerts:AzureApiKey");
+        _azureApiKeyHash = SHA256.HashData(Encoding.UTF8.GetBytes(azureApiKey));
         _environment = Config.GetValueStrict<string>("Environment");
     }
 
     public async ValueTask<bool?> CreateAzure(string apiKey, CasRequest request, CancellationToken cancellationToken)
     {
-        if (!string.Equals(_azureApiKey, apiKey, StringComparison.Ordinal))
-            throw new Exception($"{nameof(apiKey)} does not validate");
+        byte[] presentedKeyHash = SHA256.HashData(Encoding.UTF8.GetBytes(apiKey));
+        if (!CryptographicOperations.FixedTimeEquals(_azureApiKeyHash, presentedKeyHash))
+            throw new UnauthorizedAccessException("Azure alert API key is invalid.");
 
         CasData? data = request.Data;
         CasEssentials? essentials = data?.Essentials;
@@ -49,12 +52,6 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
         {
             Logger.LogError("Error did not have Essentials");
             return false;
-        }
-
-        if (Logger.IsEnabled(LogLevel.Debug))
-        {
-            string? json = JsonUtil.Serialize(request);
-            Logger.LogDebug("Error json: {json}", json);
         }
 
         var card = new AdaptiveCards.AdaptiveCard(_schema12);
@@ -105,7 +102,7 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
             }
 
             // Avoid adding empty/meaningless values
-            string metricValue = firstCondition.MetricValue.ToString();
+            string? metricValue = firstCondition.MetricValue.ToString();
             if (!metricValue.IsNullOrEmpty())
             {
                 factSet ??= new AdaptiveFactSet { Facts = [] };
