@@ -12,6 +12,7 @@ using Soenneker.Extensions.Configuration;
 using Soenneker.Extensions.DateTimeOffsets;
 using Soenneker.Extensions.String;
 using Soenneker.Extensions.ValueTask;
+using Soenneker.Hashing.Sha256;
 using Soenneker.MsTeams.Util.Abstract;
 using Soenneker.Requests.Azure.Alerts;
 using Soenneker.Utils.TimeZones;
@@ -21,6 +22,8 @@ namespace Soenneker.Coordinators.Alerts;
 /// <inheritdoc cref="IAlertsCoordinator"/>
 public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
 {
+    private static readonly Sha256HashingUtil _sha256 = new();
+
     private static readonly AdaptiveSchemaVersion _schema12 = new(1, 2);
     private const string _azureAlertsUrl = "https://portal.azure.com/#blade/Microsoft_Azure_Monitoring/AlertsManagementSummaryBlade";
 
@@ -35,13 +38,13 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
         _msTeamsUtil = msTeamsUtil;
 
         string azureApiKey = Config.GetValueStrict<string>("Api:Alerts:AzureApiKey");
-        _azureApiKeyHash = SHA256.HashData(Encoding.UTF8.GetBytes(azureApiKey));
+        _azureApiKeyHash = _sha256.Hash(Encoding.UTF8.GetBytes(azureApiKey));
         _environment = Config.GetValueStrict<string>("Environment");
     }
 
     public async ValueTask<bool?> CreateAzure(string apiKey, CasRequest request, CancellationToken cancellationToken)
     {
-        byte[] presentedKeyHash = SHA256.HashData(Encoding.UTF8.GetBytes(apiKey));
+        byte[] presentedKeyHash = _sha256.Hash(Encoding.UTF8.GetBytes(apiKey));
         if (!CryptographicOperations.FixedTimeEquals(_azureApiKeyHash, presentedKeyHash))
             throw new UnauthorizedAccessException("Azure alert API key is invalid.");
 
