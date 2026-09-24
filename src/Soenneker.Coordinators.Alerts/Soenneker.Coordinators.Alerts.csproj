@@ -55,6 +55,6 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
         <PackageReference Include="Soenneker.Extensions.Configuration" Version="4.0.895" />
         <PackageReference Include="Soenneker.Extensions.String" Version="4.0.762" />
-        <PackageReference Include="Soenneker.Hashing.Sha256" Version="4.0.5" />
+        <PackageReference Include="Soenneker.Hashing.Sha256" Version="4.0.6" />
     </ItemGroup>
 </Project>
