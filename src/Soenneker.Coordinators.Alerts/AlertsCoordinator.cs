@@ -1,30 +1,28 @@
-﻿using System;
+using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AdaptiveCards;
+using System.Collections.Generic;
+using System.Globalization;
+using Soenneker.AdaptiveCards.Dtos.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Soenneker.Coordinators.Alerts.Abstract;
 using Soenneker.Coordinators.Base;
 using Soenneker.Extensions.Configuration;
-using Soenneker.Extensions.DateTimeOffsets;
 using Soenneker.Extensions.String;
 using Soenneker.Extensions.ValueTask;
 using Soenneker.Hashing.Sha256;
 using Soenneker.MsTeams.Util.Abstract;
 using Soenneker.Requests.Azure.Alerts;
-using Soenneker.Utils.TimeZones;
 
 namespace Soenneker.Coordinators.Alerts;
 
-/// <inheritdoc cref="IAlertsCoordinator"/>
 public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
 {
     private static readonly Sha256HashingUtil _sha256 = new();
 
-    private static readonly AdaptiveSchemaVersion _schema12 = new(1, 2);
     private const string _azureAlertsUrl = "https://portal.azure.com/#blade/Microsoft_Azure_Monitoring/AlertsManagementSummaryBlade";
 
     private readonly IMsTeamsUtil _msTeamsUtil;
@@ -57,16 +55,24 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
             return false;
         }
 
-        var card = new AdaptiveCards.AdaptiveCard(_schema12);
-        var container = new AdaptiveContainer();
+        var card = new AdaptiveCard
+        {
+            Type = AdaptiveCardType.AdaptiveCard,
+            Version = "1.2",
+            Schema = "https://adaptivecards.io/schemas/adaptive-card.json",
+            Body = new List<ImplementationsOfElement>(),
+            Actions = new List<ImplementationsOfAction>()
+        };
+        var container = new Container { Type = ContainerType.Container, Items = [] };
 
         string? monitorCondition = essentials.MonitorCondition;
 
-        var titleBlock = new AdaptiveTextBlock
+        var titleBlock = new TextBlock
         {
-            Text = monitorCondition,
-            Size = AdaptiveTextSize.Medium,
-            Weight = AdaptiveTextWeight.Bolder,
+            Type = TextBlockType.TextBlock,
+            Text = monitorCondition ?? string.Empty,
+            Size = FontSize.FromVariant1(FontSizeVariant1.Medium),
+            Weight = FontWeight.FromVariant1(FontWeightVariant1.Bolder),
             Wrap = true
         };
 
@@ -74,22 +80,23 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
         if (monitorCondition != null)
         {
             if (monitorCondition.EqualsIgnoreCase("resolved"))
-                titleBlock.Color = AdaptiveTextColor.Good;
+                titleBlock.Color = Colors.FromVariant1(ColorsVariant1.Good);
             else if (monitorCondition.EqualsIgnoreCase("fired"))
-                titleBlock.Color = AdaptiveTextColor.Attention;
+                titleBlock.Color = Colors.FromVariant1(ColorsVariant1.Attention);
         }
 
-        container.Items.Add(titleBlock);
+        container.Items.Add(ImplementationsOfElement.FromVariant16(titleBlock));
 
-        container.Items.Add(new AdaptiveTextBlock
+        container.Items.Add(ImplementationsOfElement.FromVariant16(new TextBlock
         {
+            Type = TextBlockType.TextBlock,
             Text = $"Alert for rule {essentials.AlertRule}",
-            Size = AdaptiveTextSize.Medium,
+            Size = FontSize.FromVariant1(FontSizeVariant1.Medium),
             Wrap = true
-        });
+        }));
 
         // Build facts without Dictionary/LINQ
-        AdaptiveFactSet? factSet = null;
+        FactSet? factSet = null;
 
         CasCondition? condition = data!.AlertContext?.Condition;
         var allOf = condition?.AllOf;
@@ -100,36 +107,37 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
 
             if (!firstCondition.MetricName.IsNullOrEmpty())
             {
-                factSet ??= new AdaptiveFactSet { Facts = [] };
-                factSet.Facts.Add(new AdaptiveFact("Name:", firstCondition.MetricName));
+                factSet ??= new FactSet { Type = FactSetType.FactSet, Facts = [] };
+                factSet.Facts.Add(new Fact { Title = "Name:", Value = firstCondition.MetricName });
             }
 
             // Avoid adding empty/meaningless values
             string? metricValue = firstCondition.MetricValue.ToString();
             if (!metricValue.IsNullOrEmpty())
             {
-                factSet ??= new AdaptiveFactSet { Facts = [] };
-                factSet.Facts.Add(new AdaptiveFact("Value:", metricValue));
+                factSet ??= new FactSet { Type = FactSetType.FactSet, Facts = [] };
+                factSet.Facts.Add(new Fact { Title = "Value:", Value = metricValue });
             }
         }
 
         string? severity = essentials.Severity;
         if (!severity.IsNullOrEmpty())
         {
-            factSet ??= new AdaptiveFactSet { Facts = [] };
-            factSet.Facts.Add(new AdaptiveFact("Severity:", severity));
+            factSet ??= new FactSet { Type = FactSetType.FactSet, Facts = [] };
+            factSet.Facts.Add(new Fact { Title = "Severity:", Value = severity });
         }
 
         if (factSet != null && factSet.Facts.Count != 0)
-            container.Items.Add(factSet);
+            container.Items.Add(ImplementationsOfElement.FromVariant4(factSet));
 
-        container.Items.Add(new AdaptiveTextBlock
+        container.Items.Add(ImplementationsOfElement.FromVariant16(new TextBlock
         {
+            Type = TextBlockType.TextBlock,
             Text = _environment,
-            Size = AdaptiveTextSize.Small,
+            Size = FontSize.FromVariant1(FontSizeVariant1.Small),
             IsSubtle = true,
-            Spacing = AdaptiveSpacing.Small
-        });
+            Spacing = Spacing.FromVariant1(SpacingVariant1.Small)
+        }));
 
         string? firedDateTime = essentials.FiredDateTime;
         if (!firedDateTime.IsNullOrEmpty())
@@ -137,23 +145,25 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
             DateTimeOffset? parsed = firedDateTime.ToDateTimeOffset();
             if (parsed != null)
             {
-                container.Items.Add(new AdaptiveTextBlock
+                container.Items.Add(ImplementationsOfElement.FromVariant16(new TextBlock
                 {
-                    Text = parsed.Value.ToTzDateTimeFormat(Tz.Eastern),
-                    Size = AdaptiveTextSize.Small,
+                    Type = TextBlockType.TextBlock,
+                    Text = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(parsed.Value, "America/New_York").ToString("MM/dd/yyyy h:mm:ss tt", CultureInfo.InvariantCulture) + " ET",
+                    Size = FontSize.FromVariant1(FontSizeVariant1.Small),
                     IsSubtle = true,
-                    Spacing = AdaptiveSpacing.Small
-                });
+                    Spacing = Spacing.FromVariant1(SpacingVariant1.Small)
+                }));
             }
         }
 
-        card.Actions.Add(new AdaptiveOpenUrlAction
+        card.Actions.Value.Add(ImplementationsOfAction.FromVariant2(new ActionOpenUrl
         {
+            Type = ActionOpenUrlType.ActionOpenUrl,
             Title = "View",
-            UrlString = _azureAlertsUrl
-        });
+            Url = _azureAlertsUrl
+        }));
 
-        card.Body.Add(container);
+        card.Body.Value.Add(ImplementationsOfElement.FromVariant3(container));
 
         await _msTeamsUtil.SendMessageCard(card, "Errors", cancellationToken: cancellationToken)
                           .NoSync();
