@@ -46,13 +46,13 @@
 
     <ItemGroup>
         <PackageReference Include="Soenneker.Coordinators.Base" Version="4.0.1147" />
-        <PackageReference Include="Soenneker.MsTeams.Util" Version="4.0.1268" />
-        <PackageReference Include="Soenneker.Requests.Azure.Alerts" Version="4.0.53" />
+        <PackageReference Include="Soenneker.MsTeams.Util" Version="4.0.1276" />
+        <PackageReference Include="Soenneker.Requests.Azure.Alerts" Version="4.0.55" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.13" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
         <PackageReference Include="Soenneker.Extensions.Configuration" Version="4.0.903" />
         <PackageReference Include="Soenneker.Extensions.String" Version="4.0.781" />
         <PackageReference Include="Soenneker.Hashing.Sha256" Version="4.0.9" />
