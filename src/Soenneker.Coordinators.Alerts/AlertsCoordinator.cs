@@ -35,9 +35,9 @@ public sealed class AlertsCoordinator : BaseCoordinator, IAlertsCoordinator
     {
         _msTeamsUtil = msTeamsUtil;
 
-        string azureApiKey = Config.GetValueStrict<string>("Api:Alerts:AzureApiKey");
+        string azureApiKey = Config.GetStringStrict("Api:Alerts:AzureApiKey");
         _azureApiKeyHash = _sha256.Hash(Encoding.UTF8.GetBytes(azureApiKey));
-        _environment = Config.GetValueStrict<string>("Environment");
+        _environment = Config.GetStringStrict("Environment");
     }
 
     public async ValueTask<bool?> CreateAzure(string apiKey, CasRequest request, CancellationToken cancellationToken)
