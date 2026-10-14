@@ -53,7 +53,7 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.13" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
-        <PackageReference Include="Soenneker.Extensions.Configuration" Version="4.0.903" />
+        <PackageReference Include="Soenneker.Extensions.Configuration" Version="4.0.909" />
         <PackageReference Include="Soenneker.Extensions.String" Version="4.0.781" />
         <PackageReference Include="Soenneker.Hashing.Sha256" Version="4.0.9" />
     </ItemGroup>
